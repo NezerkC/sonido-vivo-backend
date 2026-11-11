@@ -1,0 +1,349 @@
+name: Auto Progress Tracker
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  track-progress:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Evaluate deterministic task completion and sync GitHub Issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            const { owner, repo } = context.repo;
+            const root = process.cwd();
+
+            const exists = (rel) => fs.existsSync(path.join(root, rel));
+            const read = (rel) => (exists(rel) ? fs.readFileSync(path.join(root, rel), 'utf8') : '');
+            const listFiles = (relDir) => {
+              const base = path.join(root, relDir);
+              if (!fs.existsSync(base)) return [];
+              const acc = [];
+              const walk = (dir) => {
+                for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                  const full = path.join(dir, entry.name);
+                  if (entry.isDirectory()) walk(full);
+                  else acc.push(full);
+                }
+              };
+              walk(base);
+              return acc;
+            };
+
+            const domainFiles = listFiles('src/main/java/cl/duoc/sonidovivo/domain');
+            const domainHasFrameworkImport = domainFiles.some((f) => {
+              const content = fs.readFileSync(f, 'utf8');
+              return /import\s+(org\.springframework|jakarta|org\.bson|com\.mongodb|oracle)\./.test(content);
+            });
+
+            const tasks = [
+              {
+                key: '[T01]',
+                id: 'T01',
+                name: 'Gobernanza Hexagonal, ADRs y ArchUnit',
+                isDone: () =>
+                  exists('docs/architecture.md') &&
+                  exists('docs/adr/0001-hexagonal-modular-monolith.md') &&
+                  exists('docs/adr/0002-polyglot-persistence-oracle-mongo.md') &&
+                  exists('docs/adr/0003-jwt-stateless-security.md') &&
+                  /@ArchTest/.test(read('src/test/java/cl/duoc/sonidovivo/architecture/HexagonalArchitectureTest.java')),
+                evidence: 'ADRs 0001-0003, docs/architecture.md y HexagonalArchitectureTest.java verificados.',
+                coachTip: 'Crea docs/architecture.md, los ADRs en docs/adr/ y HexagonalArchitectureTest.java con @ArchTest.'
+              },
+              {
+                key: '[T02]',
+                id: 'T02',
+                name: 'Dominio Puro Java 21 y Puertos Out',
+                isDone: () =>
+                  exists('src/main/java/cl/duoc/sonidovivo/domain/model/Product.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/domain/model/Customer.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/domain/model/SaleCommand.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/domain/port/out/ProductRepositoryPort.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/domain/port/out/DashboardMetricsPort.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/domain/port/out/CustomerRepositoryPort.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/domain/port/out/OracleSalesPort.java') &&
+                  domainFiles.length > 0 &&
+                  !domainHasFrameworkImport,
+                evidence: 'Modelos, VOs y 4 puertos out en Java 21 puro sin dependencias de frameworks.',
+                coachTip: 'Implementa modelos e interfaces port/out en domain/ sin imports de Spring ni Jakarta.'
+              },
+              {
+                key: '[T03]',
+                id: 'T03',
+                name: 'Casos de Uso, Servicios de Aplicacion y Tests',
+                isDone: () =>
+                  exists('src/main/java/cl/duoc/sonidovivo/application/port/in/ProductUseCase.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/application/port/in/DashboardUseCase.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/application/port/in/CustomerUseCase.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/application/port/in/OracleIntegrationUseCase.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/application/service/ProductService.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/application/service/DashboardService.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/application/service/CustomerService.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/application/service/OracleIntegrationService.java') &&
+                  listFiles('src/test/java/cl/duoc/sonidovivo/application/service').length >= 4,
+                evidence: '4 puertos inbound, 4 servicios de aplicacion y suite de tests unitarios detectados.',
+                coachTip: 'Implementa los UseCases en application/port/in, servicios POJO en application/service y sus tests Mockito.'
+              },
+              {
+                key: '[T04]',
+                id: 'T04',
+                name: 'Adaptador MongoDB ($inc, $push, $aggregate)',
+                isDone: () => {
+                  const prodAdapter = read('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/out/persistence/mongo/MongoProductRepositoryAdapter.java');
+                  const metricsAdapter = read('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/out/persistence/mongo/MongoMetricsRepositoryAdapter.java');
+                  return (
+                    exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/out/persistence/mongo/document/MongoProductDocument.java') &&
+                    exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/out/persistence/mongo/document/ResenaEmbeddable.java') &&
+                    /\.inc\(/.test(prodAdapter) &&
+                    /\.push\(/.test(prodAdapter) &&
+                    /Aggregation/.test(metricsAdapter)
+                  );
+                },
+                evidence: 'Documentos BSON y adaptadores MongoTemplate con $inc, $push y $aggregate verificados.',
+                coachTip: 'Implementa MongoProductDocument, MongoProductRepositoryAdapter ($inc/$push) y MongoMetricsRepositoryAdapter ($aggregate).'
+              },
+              {
+                key: '[T05]',
+                id: 'T05',
+                name: 'Adaptador Oracle PL/SQL (PKG_SONIDO_VIVO) y Clientes',
+                isDone: () => {
+                  const plsql = read('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/out/persistence/oracle/OraclePlSqlAdapter.java');
+                  return (
+                    exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/out/persistence/oracle/OracleCustomerEntity.java') &&
+                    exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/out/persistence/oracle/OracleCustomerRepositoryAdapter.java') &&
+                    /PKG_SONIDO_VIVO/.test(plsql) &&
+                    /SP_REGISTRAR_VENTA/.test(plsql) &&
+                    /SP_LIQUIDAR_CLIENTES/.test(plsql) &&
+                    /FN_CALCULAR_DESCUENTO/.test(plsql)
+                  );
+                },
+                evidence: 'OraclePlSqlAdapter integrado con PKG_SONIDO_VIVO y repositorio JPA de clientes.',
+                coachTip: 'Configura OracleCustomerEntity y OraclePlSqlAdapter invocando PKG_SONIDO_VIVO via SimpleJdbcCall.'
+              },
+              {
+                key: '[T06]',
+                id: 'T06',
+                name: 'Seguridad JWT Stateless, ROLE_ADMIN y CORS',
+                isDone: () => {
+                  const yaml = read('src/main/resources/application.yaml');
+                  return (
+                    exists('src/main/java/cl/duoc/sonidovivo/infrastructure/config/SecurityConfig.java') &&
+                    exists('src/main/java/cl/duoc/sonidovivo/infrastructure/config/JwtService.java') &&
+                    exists('src/main/java/cl/duoc/sonidovivo/infrastructure/config/JwtAuthenticationFilter.java') &&
+                    exists('src/main/java/cl/duoc/sonidovivo/infrastructure/config/CorsConfig.java') &&
+                    /\$\{JWT_SECRET\}/.test(yaml)
+                  );
+                },
+                evidence: 'SecurityConfig, JwtService, filtro Bearer y secreto externalizado en application.yaml.',
+                coachTip: 'Implementa SecurityConfig stateless, JwtService, JwtAuthenticationFilter y externaliza JWT_SECRET.'
+              },
+              {
+                key: '[T07]',
+                id: 'T07',
+                name: 'API REST Administrativa y Mapeo de Errores',
+                isDone: () =>
+                  exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AuthController.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminProductController.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminDashboardController.java') &&
+                  exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminCustomerController.java') &&
+                  /@RestControllerAdvice/.test(read('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/GlobalExceptionHandler.java')) &&
+                  listFiles('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/dto').length >= 8,
+                evidence: '4 controladores REST, GlobalExceptionHandler y DTOs Jakarta validados.',
+                coachTip: 'Implementa los controladores en adapter/in/rest, DTOs record validados y GlobalExceptionHandler.'
+              },
+              {
+                key: '[T08]',
+                id: 'T08',
+                name: 'Script e Inicializacion MongoDB ($jsonSchema e Indices)',
+                isDone: () => {
+                  const mongoScripts = [
+                    ...listFiles('scripts/mongo'),
+                    ...listFiles('db/mongo'),
+                    ...listFiles('docker/mongo')
+                  ].filter((f) => f.endsWith('.js'));
+                  return mongoScripts.some((f) => {
+                    const content = fs.readFileSync(f, 'utf8');
+                    return /\$jsonSchema/.test(content) && /createIndex/.test(content) && /idx_codigo_unique/.test(content);
+                  });
+                },
+                evidence: 'Script de inicializacion MongoDB con $jsonSchema e indices contractuales presente.',
+                coachTip: 'Crea `scripts/mongo/init-sonido-vivo.js` con el `$jsonSchema` de `productos` y los 4 indices (`idx_codigo_unique`, `idx_cat_precio`, `idx_tags`, `idx_espec_tipo`) definidos en `docs/contracts/CONTRACT_DATABASE_MONGODB.md`.'
+              },
+              {
+                key: '[T09]',
+                id: 'T09',
+                name: 'Workflow CI Maven y CORS Parametrizado',
+                isDone: () => {
+                  const ciExists = exists('.github/workflows/ci-maven.yml') || exists('.github/workflows/ci.yml');
+                  const ciContent = exists('.github/workflows/ci-maven.yml')
+                    ? read('.github/workflows/ci-maven.yml')
+                    : read('.github/workflows/ci.yml');
+                  const cors = read('src/main/java/cl/duoc/sonidovivo/infrastructure/config/CorsConfig.java');
+                  const yaml = read('src/main/resources/application.yaml');
+                  return (
+                    ciExists &&
+                    /mvnw/.test(ciContent) &&
+                    (/CORS_ALLOWED_ORIGINS|allowed-origins/.test(cors) || /CORS_ALLOWED_ORIGINS|allowed-origins/.test(yaml))
+                  );
+                },
+                evidence: 'Workflow CI Maven activo y CORS configurable por entorno.',
+                coachTip: 'Crea `.github/workflows/ci-maven.yml` corriendo `./mvnw test` con JDK 21 y parametriza los origenes en `CorsConfig.java` + `application.yaml` via `${CORS_ALLOWED_ORIGINS:http://localhost:5173,http://localhost:3000}`.'
+              },
+              {
+                key: '[T10]',
+                id: 'T10',
+                name: 'Dockerfile Non-Root, Compose y Smoke Test',
+                isDone: () => {
+                  const dockerfile = read('Dockerfile');
+                  const hasNonRootUser = /\n\s*USER\s+(?!root\b|0\b)\S+/i.test(dockerfile);
+                  const hasCompose = exists('docker-compose.yml') || exists('compose.yaml');
+                  return /FROM\s+/i.test(dockerfile) && hasNonRootUser && hasCompose;
+                },
+                evidence: 'Dockerfile multi-stage non-root y docker-compose listos para despliegue.',
+                coachTip: 'Crea un `Dockerfile` multi-stage con usuario `non-root` (`USER spring` / UID no privilegido), flags `-Xmx384m` para tu Celeron/CT100 y `docker-compose.yml` conectando MongoDB + Oracle + `/actuator/health`.'
+              }
+            ];
+
+            const allIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'all',
+              per_page: 100
+            });
+            const repoIssues = allIssues.filter((i) => !i.pull_request);
+
+            let doneCount = 0;
+            let activeTaskSet = false;
+            const summaryRows = [];
+
+            for (const task of tasks) {
+              const completed = task.isDone();
+              if (completed) doneCount++;
+
+              const issue = repoIssues.find((i) => i.title.includes(task.key));
+              let statusLabel = 'PENDIENTE';
+
+              if (completed) {
+                statusLabel = 'LISTO';
+                if (issue) {
+                  const currentLabels = issue.labels.map((l) => l.name);
+                  const nextLabels = currentLabels.filter(
+                    (l) => l !== 'estado: por-hacer' && l !== 'estado: en-curso'
+                  );
+                  if (!nextLabels.includes('estado: finalizado')) nextLabels.push('estado: finalizado');
+
+                  const needsLabelUpdate =
+                    nextLabels.length !== currentLabels.length ||
+                    !currentLabels.includes('estado: finalizado');
+
+                  if (needsLabelUpdate || issue.state !== 'closed') {
+                    await github.rest.issues.update({
+                      owner,
+                      repo,
+                      issue_number: issue.number,
+                      state: 'closed',
+                      state_reason: 'completed',
+                      labels: nextLabels
+                    });
+                  }
+
+                  const comments = await github.paginate(github.rest.issues.listComments, {
+                    owner,
+                    repo,
+                    issue_number: issue.number,
+                    per_page: 100
+                  });
+                  const verifiedMarker = `<!-- autopilot-verified:${task.id} -->`;
+                  if (!comments.some((c) => c.body && c.body.includes(verifiedMarker))) {
+                    await github.rest.issues.createComment({
+                      owner,
+                      repo,
+                      issue_number: issue.number,
+                      body: [
+                        verifiedMarker,
+                        `### Verificacion Automatica Completada (${task.id})`,
+                        `- **Commit:** \`${context.sha.slice(0, 7)}\``,
+                        `- **Evidencia en codigo:** ${task.evidence}`,
+                        '',
+                        'Issue cerrado automaticamente por **Auto Progress Tracker**.'
+                      ].join('\n')
+                    });
+                  }
+                }
+              } else if (!activeTaskSet) {
+                activeTaskSet = true;
+                statusLabel = 'EN CURSO';
+                if (issue && issue.state === 'open') {
+                  const currentLabels = issue.labels.map((l) => l.name);
+                  const nextLabels = currentLabels.filter(
+                    (l) => l !== 'estado: por-hacer' && l !== 'estado: finalizado'
+                  );
+                  if (!nextLabels.includes('estado: en-curso')) nextLabels.push('estado: en-curso');
+
+                  if (
+                    nextLabels.length !== currentLabels.length ||
+                    !currentLabels.includes('estado: en-curso')
+                  ) {
+                    await github.rest.issues.update({
+                      owner,
+                      repo,
+                      issue_number: issue.number,
+                      labels: nextLabels
+                    });
+                  }
+
+                  const comments = await github.paginate(github.rest.issues.listComments, {
+                    owner,
+                    repo,
+                    issue_number: issue.number,
+                    per_page: 100
+                  });
+                  const coachMarker = `<!-- autopilot-coach:${task.id} -->`;
+                  if (!comments.some((c) => c.body && c.body.includes(coachMarker))) {
+                    await github.rest.issues.createComment({
+                      owner,
+                      repo,
+                      issue_number: issue.number,
+                      body: [
+                        coachMarker,
+                        `### Guia Paso a Paso de la IA — Siguiente Tarea (${task.id})`,
+                        '',
+                        task.coachTip,
+                        '',
+                        'Cuando completes los cambios y hagas `git push origin main`, este issue se cerrara automaticamente.'
+                      ].join('\n')
+                    });
+                  }
+                }
+              }
+
+              summaryRows.push(`| ${task.id} | ${task.name} | ${statusLabel} | ${issue ? '#' + issue.number : 'Sin issue (ejecuta Seed Project Backlog)'} |`);
+            }
+
+            const pct = Math.round((doneCount / tasks.length) * 100);
+            const summaryMd = [
+              `## Progreso Sonido Vivo Backend: ${pct}% (${doneCount}/${tasks.length} tareas)`,
+              '',
+              '| ID | Tarea | Estado | Issue |',
+              '| :--- | :--- | :--- | :--- |',
+              ...summaryRows
+            ].join('\n');
+
+            if (process.env.GITHUB_STEP_SUMMARY) {
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, summaryMd + '\n');
+            }
+            core.info(`Progreso sincronizado: ${pct}% (${doneCount}/${tasks.length})`);

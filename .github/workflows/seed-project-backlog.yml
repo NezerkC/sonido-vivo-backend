@@ -1,0 +1,209 @@
+name: Seed Project Backlog
+
+on:
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  seed-backlog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create standard labels and idempotent backlog issues
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { owner, repo } = context.repo;
+
+            const labels = [
+              { name: 'estado: finalizado', color: '0E8A16', description: 'Tarea verificada y completada en codigo fuente' },
+              { name: 'estado: en-curso', color: 'FBCA04', description: 'Tarea activa prioritaria para implementar ahora' },
+              { name: 'estado: por-hacer', color: '1D76DB', description: 'Tarea pendiente en el backlog secuencial' },
+              { name: 'prioridad: alta', color: 'D93F0B', description: 'Requerimiento critico o bloqueante de arquitectura' },
+              { name: 'prioridad: media', color: '0075CA', description: 'Requerimiento importante de entrega y operacion' }
+            ];
+
+            for (const label of labels) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: label.name });
+                await github.rest.issues.updateLabel({
+                  owner,
+                  repo,
+                  name: label.name,
+                  color: label.color,
+                  description: label.description
+                });
+              } catch (err) {
+                if (err.status === 404) {
+                  await github.rest.issues.createLabel({
+                    owner,
+                    repo,
+                    name: label.name,
+                    color: label.color,
+                    description: label.description
+                  });
+                } else {
+                  throw err;
+                }
+              }
+            }
+
+            const existingIssues = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'all',
+              per_page: 100
+            });
+            const existingTitles = new Set(
+              existingIssues.filter((i) => !i.pull_request).map((i) => i.title.trim())
+            );
+
+            const tasks = [
+              {
+                title: '[T01] Gobernanza Hexagonal, ADRs (0001-0003) y ArchUnit',
+                priority: 'prioridad: alta',
+                body: [
+                  '## Objetivo',
+                  'Establecer la documentacion de arquitectura hexagonal, los ADRs de decisiones criticas y las pruebas automatizadas de limites arquitectonicos con ArchUnit.',
+                  '',
+                  '## Criterios de Aceptacion',
+                  '- [ ] Existe `docs/architecture.md` describiendo capas, contextos acotados y persistencia poliglota.',
+                  '- [ ] Existen `docs/adr/0001-hexagonal-modular-monolith.md`, `0002-polyglot-persistence-oracle-mongo.md` y `0003-jwt-stateless-security.md`.',
+                  '- [ ] Existe `src/test/java/cl/duoc/sonidovivo/architecture/HexagonalArchitectureTest.java` con reglas `@ArchTest`.'
+                ].join('\n')
+              },
+              {
+                title: '[T02] Dominio Puro Java 21 (Modelos, Value Objects y Puertos Out)',
+                priority: 'prioridad: alta',
+                body: [
+                  '## Objetivo',
+                  'Modelar el nucleo del negocio de Sonido Vivo en Java 21 puro sin acoplamiento a Spring, Jakarta, MongoDB ni Oracle.',
+                  '',
+                  '## Criterios de Aceptacion',
+                  '- [ ] Existen modelos (`Product`, `Customer`, `SaleCommand`) y Value Objects (`MoneyClp`, `ProductCode`, `EmailAddress`) en `domain/model/`.',
+                  '- [ ] Existen los 4 puertos de salida en `domain/port/out/` (`ProductRepositoryPort`, `DashboardMetricsPort`, `CustomerRepositoryPort`, `OracleSalesPort`).',
+                  '- [ ] Ninguna clase en `domain/` importa `org.springframework` ni `jakarta`.'
+                ].join('\n')
+              },
+              {
+                title: '[T03] Casos de Uso y Servicios de Aplicacion (Inbound Ports y Tests)',
+                priority: 'prioridad: alta',
+                body: [
+                  '## Objetivo',
+                  'Orquestar los casos de uso mediante puertos de entrada e implementaciones POJO con pruebas unitarias deterministicas.',
+                  '',
+                  '## Criterios de Aceptacion',
+                  '- [ ] Existen los 4 puertos en `application/port/in/` (`ProductUseCase`, `DashboardUseCase`, `CustomerUseCase`, `OracleIntegrationUseCase`).',
+                  '- [ ] Existen sus 4 servicios en `application/service/`.',
+                  '- [ ] Existen tests unitarios en `src/test/java/cl/duoc/sonidovivo/application/service/`.'
+                ].join('\n')
+              },
+              {
+                title: '[T04] Adaptador de Persistencia MongoDB (Catalogo, Stock Atomico y $aggregate)',
+                priority: 'prioridad: alta',
+                body: [
+                  '## Objetivo',
+                  'Implementar la persistencia NoSQL para `sonido_vivo_nosql.productos` cumpliendo el contrato `CONTRACT_DATABASE_MONGODB.md`.',
+                  '',
+                  '## Criterios de Aceptacion',
+                  '- [ ] Existen `MongoProductDocument.java` y `ResenaEmbeddable.java`.',
+                  '- [ ] `MongoProductRepositoryAdapter.java` implementa operaciones atomicas (`$inc` de stock y `$push` de resenas).',
+                  '- [ ] `MongoMetricsRepositoryAdapter.java` calcula metricas reales usando pipelines `$aggregate`.'
+                ].join('\n')
+              },
+              {
+                title: '[T05] Adaptador Oracle PL/SQL (PKG_SONIDO_VIVO) y Clientes',
+                priority: 'prioridad: alta',
+                body: [
+                  '## Objetivo',
+                  'Integrar las operaciones relacionales transaccionales y rutinas PL/SQL en Oracle (`FREEPDB1`).',
+                  '',
+                  '## Criterios de Aceptacion',
+                  '- [ ] `OraclePlSqlAdapter.java` invoca `PKG_SONIDO_VIVO` (`SP_REGISTRAR_VENTA`, `SP_LIQUIDAR_CLIENTES`, `FN_CALCULAR_DESCUENTO`).',
+                  '- [ ] Existen `OracleCustomerEntity.java` y `OracleCustomerRepositoryAdapter.java` implementando el puerto de clientes.'
+                ].join('\n')
+              },
+              {
+                title: '[T06] Seguridad JWT Stateless, ROLE_ADMIN y Configuracion CORS',
+                priority: 'prioridad: alta',
+                body: [
+                  '## Objetivo',
+                  'Proteger `/api/v1/admin/**` con autenticacion Bearer JWT stateless y politicas CORS explicitas sin secretos hardcoded.',
+                  '',
+                  '## Criterios de Aceptacion',
+                  '- [ ] Existen `SecurityConfig.java`, `JwtService.java`, `JwtAuthenticationFilter.java` y `CorsConfig.java`.',
+                  '- [ ] `src/main/resources/application.yaml` parametriza `${JWT_SECRET}` y `${JWT_EXPIRATION_MS:86400000}`.'
+                ].join('\n')
+              },
+              {
+                title: '[T07] API REST Administrativa y Mapeo Global de Errores',
+                priority: 'prioridad: media',
+                body: [
+                  '## Objetivo',
+                  'Exponer los controladores REST `/api/v1/**` con DTOs validados con Jakarta Validation y respuestas uniformes de error.',
+                  '',
+                  '## Criterios de Aceptacion',
+                  '- [ ] Existen `AuthController`, `AdminProductController`, `AdminDashboardController` y `AdminCustomerController`.',
+                  '- [ ] Existe `GlobalExceptionHandler.java` con `@RestControllerAdvice`.',
+                  '- [ ] Existen DTOs en `infrastructure/adapter/in/rest/dto/`.'
+                ].join('\n')
+              },
+              {
+                title: '[T08] Script e Inicializacion MongoDB ($jsonSchema e Indices)',
+                priority: 'prioridad: alta',
+                body: [
+                  '## Objetivo',
+                  'Materializar el esquema de validacion `$jsonSchema` y los 4 indices especificados en `docs/contracts/CONTRACT_DATABASE_MONGODB.md` para la coleccion `productos`.',
+                  '',
+                  '## Criterios de Aceptacion',
+                  '- [ ] Existe `scripts/mongo/init-sonido-vivo.js` (o equivalente bajo `db/mongo/`).',
+                  '- [ ] Define validacion `$jsonSchema` para `codigo`, `nombre`, `categoria`, `precio_clp`, `stock_disponible` y `estado`.',
+                  '- [ ] Crea los indices `idx_codigo_unique`, `idx_cat_precio`, `idx_tags` e `idx_espec_tipo`.'
+                ].join('\n')
+              },
+              {
+                title: '[T09] Workflow CI Maven (Tests + ArchUnit) y CORS Parametrizado',
+                priority: 'prioridad: media',
+                body: [
+                  '## Objetivo',
+                  'Automatizar la ejecucion de pruebas unitarias y ArchUnit en GitHub Actions y externalizar los origenes CORS permitidos para despliegue.',
+                  '',
+                  '## Criterios de Aceptacion',
+                  '- [ ] Existe `.github/workflows/ci-maven.yml` ejecutando `./mvnw test` con JDK 21.',
+                  '- [ ] `CorsConfig.java` y `application.yaml` leen origenes permitidos desde `${CORS_ALLOWED_ORIGINS:...}` en lugar de lista fija local.'
+                ].join('\n')
+              },
+              {
+                title: '[T10] Empaquetado Dockerfile Non-Root, Compose y Smoke Test',
+                priority: 'prioridad: media',
+                body: [
+                  '## Objetivo',
+                  'Empaquetar el backend como imagen OCI segura multi-stage con usuario no-root y definir su stack reproducible para despliegue.',
+                  '',
+                  '## Criterios de Aceptacion',
+                  '- [ ] Existe `Dockerfile` en la raiz del proyecto con compilacion multi-stage y directiva `USER` distinta de `root`.',
+                  '- [ ] Existe `docker-compose.yml` (o `compose.yaml`) configurando limites de memoria JVM, MongoDB y conexion a Oracle.',
+                  '- [ ] Incluye verificacion de `/actuator/health`.'
+                ].join('\n')
+              }
+            ];
+
+            let created = 0;
+            let skipped = 0;
+            for (const task of tasks) {
+              if (existingTitles.has(task.title)) {
+                skipped++;
+                continue;
+              }
+              await github.rest.issues.create({
+                owner,
+                repo,
+                title: task.title,
+                body: task.body,
+                labels: ['estado: por-hacer', task.priority]
+              });
+              created++;
+            }
+
+            core.info(`Seed finalizado: ${created} issues creados, ${skipped} ya existian.`);
