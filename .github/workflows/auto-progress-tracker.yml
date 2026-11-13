@@ -128,7 +128,8 @@ jobs:
                     /PKG_SONIDO_VIVO/.test(plsql) &&
                     /SP_REGISTRAR_VENTA/.test(plsql) &&
                     /SP_LIQUIDAR_CLIENTES/.test(plsql) &&
-                    /FN_CALCULAR_DESCUENTO/.test(plsql)
+                    /FN_CALCULAR_DESCUENTO/.test(plsql) &&
+                    !/UnsupportedOperationException/.test(plsql)
                   );
                 },
                 evidence: 'OraclePlSqlAdapter integrado con PKG_SONIDO_VIVO y repositorio JPA de clientes.',
@@ -140,12 +141,14 @@ jobs:
                 name: 'Seguridad JWT Stateless, ROLE_ADMIN y CORS',
                 isDone: () => {
                   const yaml = read('src/main/resources/application.yaml');
+                  const auth = read('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AuthController.java');
                   return (
                     exists('src/main/java/cl/duoc/sonidovivo/infrastructure/config/SecurityConfig.java') &&
                     exists('src/main/java/cl/duoc/sonidovivo/infrastructure/config/JwtService.java') &&
                     exists('src/main/java/cl/duoc/sonidovivo/infrastructure/config/JwtAuthenticationFilter.java') &&
                     exists('src/main/java/cl/duoc/sonidovivo/infrastructure/config/CorsConfig.java') &&
-                    /\$\{JWT_SECRET\}/.test(yaml)
+                    /\$\{JWT_SECRET\}/.test(yaml) &&
+                    !/UnsupportedOperationException/.test(auth)
                   );
                 },
                 evidence: 'SecurityConfig, JwtService, filtro Bearer y secreto externalizado en application.yaml.',
@@ -155,13 +158,18 @@ jobs:
                 key: '[T07]',
                 id: 'T07',
                 name: 'API REST Administrativa y Mapeo de Errores',
-                isDone: () =>
-                  exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AuthController.java') &&
-                  exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminProductController.java') &&
-                  exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminDashboardController.java') &&
-                  exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminCustomerController.java') &&
-                  /@RestControllerAdvice/.test(read('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/GlobalExceptionHandler.java')) &&
-                  listFiles('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/dto').length >= 8,
+                isDone: () => {
+                  const prodCtrl = read('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminProductController.java');
+                  return (
+                    exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AuthController.java') &&
+                    exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminProductController.java') &&
+                    exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminDashboardController.java') &&
+                    exists('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminCustomerController.java') &&
+                    /@RestControllerAdvice/.test(read('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/GlobalExceptionHandler.java')) &&
+                    listFiles('src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/dto').length >= 8 &&
+                    !/UnsupportedOperationException/.test(prodCtrl)
+                  );
+                },
                 evidence: '4 controladores REST, GlobalExceptionHandler y DTOs Jakarta validados.',
                 coachTip: 'Implementa los controladores en adapter/in/rest, DTOs record validados y GlobalExceptionHandler.'
               },

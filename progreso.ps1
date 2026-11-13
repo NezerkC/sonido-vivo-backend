@@ -110,7 +110,8 @@ $tasks = @(
                 ($ora -match 'PKG_SONIDO_VIVO') -and
                 ($ora -match 'SP_REGISTRAR_VENTA') -and
                 ($ora -match 'SP_LIQUIDAR_CLIENTES') -and
-                ($ora -match 'FN_CALCULAR_DESCUENTO')
+                ($ora -match 'FN_CALCULAR_DESCUENTO') -and
+                (-not ($ora -match 'UnsupportedOperationException'))
             )
         )
         Coach = 'Implementa OracleCustomerEntity y OraclePlSqlAdapter invocando PKG_SONIDO_VIVO via SimpleJdbcCall.'
@@ -118,25 +119,33 @@ $tasks = @(
     @{
         Id = 'T06'
         Title = 'Seguridad JWT Stateless, ROLE_ADMIN y Configuracion CORS'
-        Done = (
-            (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/config/SecurityConfig.java') -and
-            (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/config/JwtService.java') -and
-            (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/config/JwtAuthenticationFilter.java') -and
-            (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/config/CorsConfig.java') -and
-            ((Read-RepoFile 'src/main/resources/application.yaml') -match '\$\{JWT_SECRET\}')
+        Done = $(
+            $auth = Read-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AuthController.java'
+            (
+                (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/config/SecurityConfig.java') -and
+                (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/config/JwtService.java') -and
+                (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/config/JwtAuthenticationFilter.java') -and
+                (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/config/CorsConfig.java') -and
+                ((Read-RepoFile 'src/main/resources/application.yaml') -match '\$\{JWT_SECRET\}') -and
+                (-not ($auth -match 'UnsupportedOperationException'))
+            )
         )
         Coach = 'Configura SecurityConfig stateless, JwtService, JwtAuthenticationFilter y externaliza JWT_SECRET en application.yaml.'
     },
     @{
         Id = 'T07'
         Title = 'API REST Administrativa y Mapeo Global de Errores'
-        Done = (
-            (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AuthController.java') -and
-            (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminProductController.java') -and
-            (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminDashboardController.java') -and
-            (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminCustomerController.java') -and
-            ((Read-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/GlobalExceptionHandler.java') -match '@RestControllerAdvice') -and
-            ((Get-RepoFiles 'src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/dto').Count -ge 8)
+        Done = $(
+            $prodCtrl = Read-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminProductController.java'
+            (
+                (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AuthController.java') -and
+                (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminProductController.java') -and
+                (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminDashboardController.java') -and
+                (Test-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/AdminCustomerController.java') -and
+                ((Read-RepoFile 'src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/GlobalExceptionHandler.java') -match '@RestControllerAdvice') -and
+                ((Get-RepoFiles 'src/main/java/cl/duoc/sonidovivo/infrastructure/adapter/in/rest/dto').Count -ge 8) -and
+                (-not ($prodCtrl -match 'UnsupportedOperationException'))
+            )
         )
         Coach = 'Expone los 4 controladores REST, DTOs record validados y GlobalExceptionHandler.'
     },
