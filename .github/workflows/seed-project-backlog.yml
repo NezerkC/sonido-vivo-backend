@@ -63,7 +63,11 @@ jobs:
               {
                 title: '[T01] Gobernanza Hexagonal, ADRs (0001-0003) y ArchUnit',
                 priority: 'prioridad: alta',
+                assignee: 'NezerkC',
                 body: [
+                  '## Responsable Asignado',
+                  '@NezerkC (Víctor Martínez)',
+                  '',
                   '## Objetivo',
                   'Establecer la documentacion de arquitectura hexagonal, los ADRs de decisiones criticas y las pruebas automatizadas de limites arquitectonicos con ArchUnit.',
                   '',
@@ -76,7 +80,11 @@ jobs:
               {
                 title: '[T02] Dominio Puro Java 21 (Modelos, Value Objects y Puertos Out)',
                 priority: 'prioridad: alta',
+                assignee: 'NezerkC',
                 body: [
+                  '## Responsable Asignado',
+                  '@NezerkC (Víctor Martínez)',
+                  '',
                   '## Objetivo',
                   'Modelar el nucleo del negocio de Sonido Vivo en Java 21 puro sin acoplamiento a Spring, Jakarta, MongoDB ni Oracle.',
                   '',
@@ -89,7 +97,11 @@ jobs:
               {
                 title: '[T03] Casos de Uso y Servicios de Aplicacion (Inbound Ports y Tests)',
                 priority: 'prioridad: alta',
+                assignee: 'NezerkC',
                 body: [
+                  '## Responsable Asignado',
+                  '@NezerkC (Víctor Martínez)',
+                  '',
                   '## Objetivo',
                   'Orquestar los casos de uso mediante puertos de entrada e implementaciones POJO con pruebas unitarias deterministicas.',
                   '',
@@ -102,7 +114,11 @@ jobs:
               {
                 title: '[T04] Adaptador de Persistencia MongoDB (Catalogo, Stock Atomico y $aggregate)',
                 priority: 'prioridad: alta',
+                assignee: 'NezerkC',
                 body: [
+                  '## Responsable Asignado',
+                  '@NezerkC (Víctor Martínez)',
+                  '',
                   '## Objetivo',
                   'Implementar la persistencia NoSQL para `sonido_vivo_nosql.productos` cumpliendo el contrato `CONTRACT_DATABASE_MONGODB.md`.',
                   '',
@@ -115,44 +131,62 @@ jobs:
               {
                 title: '[T05] Adaptador Oracle PL/SQL (PKG_SONIDO_VIVO) y Clientes',
                 priority: 'prioridad: alta',
+                assignee: 'Daakhen',
                 body: [
+                  '## Responsable Asignado',
+                  '@Daakhen (Danilo Sepúlveda)',
+                  '',
                   '## Objetivo',
-                  'Integrar las operaciones relacionales transaccionales y rutinas PL/SQL en Oracle (`FREEPDB1`).',
+                  'Integrar las operaciones relacionales transaccionales y rutinas PL/SQL en Oracle (`FREEPDB1`) invocando el paquete `PKG_SONIDO_VIVO`.',
                   '',
                   '## Criterios de Aceptacion',
-                  '- [ ] `OraclePlSqlAdapter.java` invoca `PKG_SONIDO_VIVO` (`SP_REGISTRAR_VENTA`, `SP_LIQUIDAR_CLIENTES`, `FN_CALCULAR_DESCUENTO`).',
-                  '- [ ] Existen `OracleCustomerEntity.java` y `OracleCustomerRepositoryAdapter.java` implementando el puerto de clientes.'
+                  '- [ ] `OraclePlSqlAdapter.java` invoca `PKG_SONIDO_VIVO` (`SP_REGISTRAR_VENTA`, `SP_LIQUIDAR_CLIENTES`, `FN_CALCULAR_DESCUENTO`) usando `SimpleJdbcCall`.',
+                  '- [ ] Existen `OracleCustomerEntity.java` y `OracleCustomerRepositoryAdapter.java` implementando el puerto `CustomerRepositoryPort`.',
+                  '- [ ] Se respetan los tipos de datos y parámetros OUT según `docs/DEPLOYMENT_ORACLE_MONGO_CT100.md`.'
                 ].join('\n')
               },
               {
                 title: '[T06] Seguridad JWT Stateless, ROLE_ADMIN y Configuracion CORS',
                 priority: 'prioridad: alta',
+                assignee: 'dysandoval',
                 body: [
+                  '## Responsable Asignado',
+                  '@dysandoval (Dylan Sandoval)',
+                  '',
                   '## Objetivo',
                   'Proteger `/api/v1/admin/**` con autenticacion Bearer JWT stateless y politicas CORS explicitas sin secretos hardcoded.',
                   '',
                   '## Criterios de Aceptacion',
                   '- [ ] Existen `SecurityConfig.java`, `JwtService.java`, `JwtAuthenticationFilter.java` y `CorsConfig.java`.',
-                  '- [ ] `src/main/resources/application.yaml` parametriza `${JWT_SECRET}` y `${JWT_EXPIRATION_MS:86400000}`.'
+                  '- [ ] `src/main/resources/application.yaml` parametriza `${JWT_SECRET}` y `${JWT_EXPIRATION_MS:86400000}`.',
+                  '- [ ] Emisión y validación de tokens Bearer probada según contrato.'
                 ].join('\n')
               },
               {
                 title: '[T07] API REST Administrativa y Mapeo Global de Errores',
                 priority: 'prioridad: media',
+                assignee: 'dysandoval',
                 body: [
+                  '## Responsable Asignado',
+                  '@dysandoval (Dylan Sandoval)',
+                  '',
                   '## Objetivo',
                   'Exponer los controladores REST `/api/v1/**` con DTOs validados con Jakarta Validation y respuestas uniformes de error.',
                   '',
                   '## Criterios de Aceptacion',
-                  '- [ ] Existen `AuthController`, `AdminProductController`, `AdminDashboardController` y `AdminCustomerController`.',
+                  '- [ ] Implementación de `AuthController`, `AdminProductController`, `AdminDashboardController` y `AdminCustomerController`.',
                   '- [ ] Existe `GlobalExceptionHandler.java` con `@RestControllerAdvice`.',
-                  '- [ ] Existen DTOs en `infrastructure/adapter/in/rest/dto/`.'
+                  '- [ ] Cumplimiento de contratos REST en `docs/contracts/CONTRACT_FULLSTACK_REST.md`.'
                 ].join('\n')
               },
               {
                 title: '[T08] Script e Inicializacion MongoDB ($jsonSchema e Indices)',
                 priority: 'prioridad: alta',
+                assignee: 'NezerkC',
                 body: [
+                  '## Responsable Asignado',
+                  '@NezerkC (Víctor Martínez)',
+                  '',
                   '## Objetivo',
                   'Materializar el esquema de validacion `$jsonSchema` y los 4 indices especificados en `docs/contracts/CONTRACT_DATABASE_MONGODB.md` para la coleccion `productos`.',
                   '',
@@ -165,7 +199,11 @@ jobs:
               {
                 title: '[T09] Workflow CI Maven (Tests + ArchUnit) y CORS Parametrizado',
                 priority: 'prioridad: media',
+                assignee: 'NezerkC',
                 body: [
+                  '## Responsable Asignado',
+                  '@NezerkC (Víctor Martínez)',
+                  '',
                   '## Objetivo',
                   'Automatizar la ejecucion de pruebas unitarias y ArchUnit en GitHub Actions y externalizar los origenes CORS permitidos para despliegue.',
                   '',
@@ -177,7 +215,11 @@ jobs:
               {
                 title: '[T10] Empaquetado Dockerfile Non-Root, Compose y Smoke Test',
                 priority: 'prioridad: media',
+                assignee: 'NezerkC',
                 body: [
+                  '## Responsable Asignado',
+                  '@NezerkC (Víctor Martínez)',
+                  '',
                   '## Objetivo',
                   'Empaquetar el backend como imagen OCI segura multi-stage con usuario no-root y definir su stack reproducible para despliegue.',
                   '',
@@ -196,13 +238,17 @@ jobs:
                 skipped++;
                 continue;
               }
-              await github.rest.issues.create({
+              const issueParams = {
                 owner,
                 repo,
                 title: task.title,
                 body: task.body,
                 labels: ['estado: por-hacer', task.priority]
-              });
+              };
+              if (task.assignee) {
+                issueParams.assignees = [task.assignee];
+              }
+              await github.rest.issues.create(issueParams);
               created++;
             }
 
